@@ -12,208 +12,130 @@ namespace TutorialMonoGame
     /// </summary>
     public class Game1 : Game
     {
-        GraphicsDeviceManager graphics;
+        const float PIXELS_PER_SECOND = 100.0f;
+        readonly GraphicsDeviceManager graphics;
         SpriteBatch spriteBatch;
 
-        private Camera _camera;
+        private Texture2D playerTexture;
 
-        private Texture2D _playerTexture;
+        private Texture2D backgroundTexture;
 
-        private Texture2D _backgroundTexture;
+        private Rectangle mapsize;
+        private Rectangle playersize;
 
-        private SpriteFont _spriteFont;
+        private Vector2 playerPosition;
 
-        private Vector2 _mapposition = new Vector2(400, 240);
-        private Vector2 _playerPosition;
-
-        private Rectangle _border;
-        private Rectangle _topborder;
-        private Rectangle _rightborder;
-        private Rectangle _bottomborder;
-        private Rectangle _leftborder;
-        private Rectangle _endborder;
-
-        private bool _playercheck;
-        private bool _mapcheck;
+        private TimeSpan previousGametime = new(0L);
 
         public Game1()
         {
-            graphics = new GraphicsDeviceManager(this);
+            graphics = new(this);
             Content.RootDirectory = "Content";
         }
 
-        /// <summary>
-        /// Allows the game to perform any initialization it needs to before starting to run.
-        /// This is where it can query for any required services and load any non-graphic
-        /// related content.  Calling base.Initialize will enumerate through any components
-        /// and initialize them as well.
-        /// </summary>
-        protected override void Initialize()
-        {
-            // TODO: Add your initialization logic here
+        protected override void Initialize() {base.Initialize();}
 
-            base.Initialize();
-        }
-
-        /// <summary>
-        /// LoadContent will be called once per game and is the place to load
-        /// all of your content.
-        /// </summary>
         protected override void LoadContent()
         {
-            // Create a new SpriteBatch, which can be used to draw textures.
-            spriteBatch = new SpriteBatch(GraphicsDevice);
+            spriteBatch = new(graphics.GraphicsDevice);
 
-            _camera = new Camera();
+            playerTexture = Content.Load<Texture2D>("ball");
+            backgroundTexture = Content.Load<Texture2D>("test_map");
 
-            _border = new Rectangle(-1250,-1410,2500,2820);
-            _topborder = new Rectangle(-1600, -1600, 3200, 240);
-            _rightborder = new Rectangle(1200, -1600, 400, 3200);
-            _bottomborder = new Rectangle(-1600, 1360, 3200, 240);
-            _leftborder = new Rectangle(-1600, -1600, 400, 3200);
-            _endborder = new Rectangle(-1150, -1310, 2300, 2620);
+            mapsize = new(-backgroundTexture.Width/2, -backgroundTexture.Height/2,
+                          backgroundTexture.Width, backgroundTexture.Height);
+            playersize = new(-playerTexture.Width/2, -playerTexture.Height/2,
+                             playerTexture.Width, playerTexture.Height);
 
-            _playerTexture = Content.Load<Texture2D>("ball");
-            _backgroundTexture = Content.Load<Texture2D>("test_map");
-            _spriteFont = Content.Load<SpriteFont>("File");
+            playerPosition = new(0,0);
         }
 
-        /// <summary>
-        /// UnloadContent will be called once per game and is the place to unload
-        /// game-specific content.
-        /// </summary>
-        protected override void UnloadContent()
-        {
-            // TODO: Unload any non ContentManager content here
-        }
+        protected override void UnloadContent() {}
 
-        /// <summary>
-        /// Allows the game to run logic such as updating the world,
-        /// checking for collisions, gathering input, and playing audio.
-        /// </summary>
-        /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
-            float xspeed = 0f;
-            float yspeed = 0f;
-            if(!_topborder.Contains(_playerPosition) && !_bottomborder.Contains(_playerPosition))
-            {
-                yspeed = 1f;
-            }
-            if (!_rightborder.Contains(_playerPosition) && !_leftborder.Contains(_playerPosition))
-            {
-                xspeed = 1f;
+            if (previousGametime.Ticks == 0L) {
+                previousGametime = gameTime.TotalGameTime;
             }
 
-            if (Keyboard.GetState().IsKeyDown(Keys.W) && !_bottomborder.Contains(_playerPosition))
+            float deltaSeconds = (float)(gameTime.TotalGameTime - previousGametime).Ticks / (float)TimeSpan.TicksPerSecond;
+            previousGametime = gameTime.TotalGameTime;
+
+            if (Keyboard.GetState().IsKeyDown(Keys.W))
             {
-                _playerPosition.Y -= 3f * yspeed;
-            }
-            else if(Keyboard.GetState().IsKeyDown(Keys.W) && _topborder.Contains(_playerPosition))
-            {
-                _mapposition.Y -= 3f * yspeed;
-            }
-            else if (Keyboard.GetState().IsKeyDown(Keys.W))
-            {
-                _playerPosition.Y -= 3f;
+                playerPosition.Y -= deltaSeconds*PIXELS_PER_SECOND;
             }
 
-            if (Keyboard.GetState().IsKeyDown(Keys.S) && !_topborder.Contains(_playerPosition))
+            if (Keyboard.GetState().IsKeyDown(Keys.S))
             {
-                _playerPosition.Y += 3f * yspeed;
-            }
-            else if (Keyboard.GetState().IsKeyDown(Keys.S))
-            {
-                _playerPosition.Y += 3f;
+                playerPosition.Y += deltaSeconds*PIXELS_PER_SECOND;
             }
 
-            if (Keyboard.GetState().IsKeyDown(Keys.A) && !_rightborder.Contains(_playerPosition))
+            if (Keyboard.GetState().IsKeyDown(Keys.A))
             {
-                _playerPosition.X -= 3f * xspeed;
-            }
-            else if (Keyboard.GetState().IsKeyDown(Keys.A))
-            {
-                _playerPosition.X -= 3f;
+                playerPosition.X -= deltaSeconds*PIXELS_PER_SECOND;
             }
 
-            if (Keyboard.GetState().IsKeyDown(Keys.D) && !_leftborder.Contains(_playerPosition))
+            if (Keyboard.GetState().IsKeyDown(Keys.D))
             {
-                _playerPosition.X += 3f * xspeed;
-            }
-            else if (Keyboard.GetState().IsKeyDown(Keys.D))
-            {
-                _playerPosition.X += 3f;
+                playerPosition.X += deltaSeconds*PIXELS_PER_SECOND;
             }
 
-
-
-
-
-            if (_border.Contains(_playerPosition))
-            {
-                _playercheck = true;
+            //Don't allow player to move outside of map
+            if ((playerPosition.X + playersize.Left) < mapsize.Left) {
+                playerPosition.X = mapsize.Left - playersize.Left;
+            } else if ((playerPosition.X + playersize.Right) > mapsize.Right) {
+                playerPosition.X = mapsize.Right - playersize.Right;
             }
-            else
-            {
-                _playercheck = false;
-            }
-            //if (!_endborder.Contains(_playerPosition))
-            //{
-            //    if (Keyboard.GetState().IsKeyDown(Keys.A) || Keyboard.GetState().IsKeyDown(Keys.D))
-            //    {
-            //        _playerPosition.X = -_playerPosition.X;
-            //    }
-            //    if (Keyboard.GetState().IsKeyDown(Keys.W) || Keyboard.GetState().IsKeyDown(Keys.S))
-            //    {
-            //        _playerPosition.Y = -_playerPosition.Y;
-            //    }
-            //}
-
-            if (_playercheck)
-            {
-                _camera.Follow(_playerPosition);
+            if ((playerPosition.Y + playersize.Top) < mapsize.Top) {
+                playerPosition.Y = mapsize.Top - playersize.Top;
+            } else if ((playerPosition.Y + playersize.Bottom) > mapsize.Bottom) {
+                playerPosition.Y = mapsize.Bottom - playersize.Bottom;
             }
 
             base.Update(gameTime);
         }
 
-        /// <summary>
-        /// This is called when the game should draw itself.
-        /// </summary>
-        /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Draw(GameTime gameTime)
         {
-            GraphicsDevice.Clear(Color.CornflowerBlue);
+            Viewport viewport = graphics.GraphicsDevice.Viewport;
 
-            spriteBatch.Begin(transformMatrix: _camera.Transform);
+            Vector2 centreOfViewport = new(viewport.X + viewport.Width/2, viewport.Y + viewport.Height/2);
+            Vector2 mapPosUpperLeftOnViewport = new(centreOfViewport.X + mapsize.Left, centreOfViewport.Y + mapsize.Top);
+            Vector2 playerPosUpperLeftOnViewport = new(centreOfViewport.X + playersize.Left, centreOfViewport.Y + playersize.Top);
 
-            spriteBatch.Draw(_backgroundTexture, new Vector2(0, 0), new Rectangle(0, 0, 1600, 1600), Color.White, 0f, new Vector2(800, 800), 2f, SpriteEffects.None, 0f);
+            //Move map relative to player being in centre
+            mapPosUpperLeftOnViewport -= playerPosition;
 
-            spriteBatch.DrawRectangle(_border, Color.DarkViolet, 5f);
-            spriteBatch.DrawRectangle(_endborder, Color.Red, 5f);
+            //Don't allow map to move outside of viewport
+            Vector2 viewportOffset = new(0, 0);
+            if (mapPosUpperLeftOnViewport.X > viewport.X) {
+                viewportOffset.X = mapPosUpperLeftOnViewport.X - viewport.X;
+            } else if ((mapPosUpperLeftOnViewport.X+mapsize.Width) < (viewport.X+viewport.Width)) {
+                viewportOffset.X = (mapPosUpperLeftOnViewport.X+mapsize.Width) - (viewport.X+viewport.Width);
+            }
+            if (mapPosUpperLeftOnViewport.Y > viewport.Y) {
+                viewportOffset.Y = mapPosUpperLeftOnViewport.Y - viewport.Y;
+            } else if ((mapPosUpperLeftOnViewport.Y+mapsize.Height) < (viewport.Y+viewport.Height)) {
+                viewportOffset.Y = (mapPosUpperLeftOnViewport.Y+mapsize.Height) - (viewport.Y+viewport.Height);
+            }
+            mapPosUpperLeftOnViewport -= viewportOffset;
+            playerPosUpperLeftOnViewport -= viewportOffset;
+  
 
-            spriteBatch.DrawRectangle(_topborder, Color.Purple, 5f);
-            spriteBatch.DrawRectangle(_rightborder, Color.Pink, 5f);
-            spriteBatch.DrawRectangle(_bottomborder, Color.Orange, 5f);
-            spriteBatch.DrawRectangle(_leftborder, Color.RoyalBlue, 5f);
+            //Draw stuff
 
-            spriteBatch.End();
+            graphics.GraphicsDevice.Clear(Color.CornflowerBlue);
 
             spriteBatch.Begin();
 
-            if (_mapcheck)
-            {
-                spriteBatch.Draw(_playerTexture, new Vector2(_playerPosition.X, _playerPosition.Y), Color.Green);
-            }
-            else if(_playercheck)
-            {
-                spriteBatch.Draw(_playerTexture, new Vector2(200, 240), Color.Green);
-            }
-            spriteBatch.Draw(_playerTexture, new Vector2(400, _mapposition.Y), Color.Red);
+            spriteBatch.Draw(backgroundTexture,
+                             mapPosUpperLeftOnViewport,
+                             Color.White);
 
-            
-
-            spriteBatch.DrawString(_spriteFont, Convert.ToString(_playercheck), new Vector2(100, 100), Color.Crimson);
+            spriteBatch.Draw(playerTexture,
+                             playerPosUpperLeftOnViewport,
+                             Color.Green);
 
             spriteBatch.End();
 
